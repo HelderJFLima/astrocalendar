@@ -308,6 +308,7 @@ double radian_to_decdeg(double rad);
 Hdeg* radian_to_sexdeg(double rad);
 
 // Converts a Coord structure of sexagesimal degs into an array of decimal degs.
+// Returns NULL if 'crd' is NULL.
 //
 Array* coord_to_decdeg_array(Coord *crd);
 
@@ -317,7 +318,7 @@ Array* coord_to_decdeg_array(Coord *crd);
 void over_coord_to_decdeg_array(Coord *crd, Array *arr);
 
 // Converts an array of decimal degs into a Coord structure of sexagesimal degs.
-// Returns '0' if 'arr' is NULL or if it has less than two elements.
+// Returns NULL if 'arr' is NULL or if it has less than two elements.
 //
 Coord* decdeg_array_to_coord(Array *arr);
 
@@ -325,6 +326,28 @@ Coord* decdeg_array_to_coord(Array *arr);
 // in a pre-existing Coord.
 //
 void over_decdeg_array_to_coord(Array *arr, Coord *crd);
+
+// Converts a Coord structure of sexagesimal equatorial coordinates into
+// an array of decimal degs.
+// Returns NULL if 'crd' is NULL.
+//
+Array* eq_coord_to_decdeg_array(Coord *crd);
+
+// Does the same as 'eq_coord_to_decdeg_array' but saves the result
+// in a pre-existing Array.
+//
+void over_eq_coord_to_decdeg_array(Coord *crd, Array *darr);
+
+// Converts an array of decimal degs into a Coord structure of sexagesimal
+// equatorial coordinates.
+// Returns NULL if 'darr' is NULL or if it has less than two elements.
+//
+Coord* decdeg_arr_to_eq_coord(Array *darr);
+
+// Does the same as 'decdeg_arr_to_eq_coord' but saves the result
+// in a pre-existing Coord.
+//
+void over_decdeg_arr_to_eq_coord(Array *darr, Coord *crd);
 
 // Converts an array of decimal degs into an array of radians.
 // Returns NULL if 'arr' is NULL or if it has less than two elements.
@@ -432,6 +455,48 @@ Array* pos_vector_to_decdeg_arr(Array *pos);
 //
 void over_pos_vector_to_decdeg_arr(Array *pos, Array *darr);
 
+// Calculates auxiliar angles used for precession.
+// The time informed must be the fraction of century elapsed
+// since J2000.0 epoch.
+//
+Array* precession_auxiliar_angles(double time);
+
+// Determines the matrix used for precession.
+// The array informed must contain the auxiliar angles calculated
+// by the function 'precession_auxiliar_angles'.
+// Returns NULL if 'ang' is NULL or has less than 3 elements.
+//
+Matrix* precession_matrix(Array *ang);
+
+// Precess the coordinates of an object with standard epoch J2000.0.
+// It's necessary to inform the coordinates (decimal degrees) and
+// the time of observation in Julian Date.
+// Returns NULL if 'darr' is NULL or has less than 2 elements, or
+// if 'jd' is invalid.
+//
+Array* precession_J2000(Array *darr, double jd);
+
+// Determines the matrix used for nutation.
+// Returns NULL if 'jd' is invalid.
+//
+Matrix* nutation_matrix(double jd);
+
+// Corrects the coordinates of an object with nutation for standard
+// epoch J2000.0.
+// It's necessary to inform the coordinates (decimal degrees) and
+// the time of observation in Julian Date.
+// Returns NULL if 'darr' is NULL or has less than 2 elements, or
+// if 'jd' is invalid.
+//
+Array* nutation_J2000(Array *darr, double jd);
+
+// Corrects the coordinates of an object with annual aberration.
+// It's necessary to inform the coordinates (decimal degrees) and
+// the time of observation in Julian Date.
+// Returns NULL if 'darr' is NULL or has less than 2 elements, or
+// if 'jd' is invalid.
+//
+void aberration_correction(Array *darr, double jd);
 
 
 
@@ -441,4 +506,4 @@ void over_pos_vector_to_decdeg_arr(Array *pos, Array *darr);
 
 // Auxiliar test function.
 //
-long aux(Date *date);
+void auxf(Matrix *mat);

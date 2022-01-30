@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "linalg.h"
+#include "linalg.c"
 #include "astrocalendar.h"
 
 #define PI 3.141592653589793
@@ -20,7 +20,7 @@
 #define ERRMSS07 "NULL coordinate informed!"
 #define ERRMSS08 "NULL array informed!"
 #define ERRMSS09 "the length of array is insufficient!"
-// Last function number: 64
+// Last function number: 73
 
 struct date
 {
@@ -1388,6 +1388,104 @@ void over_decdeg_array_to_coord(Array *arr, Coord *crd) // Does the same as 'dec
 	over_sexagesimal_deg( get_from_array(arr, Y), crd->b );
 }
 
+Array* eq_coord_to_decdeg_array(Coord *crd)		// Converts a Coord structure of sexagesimal equatorial coordinates into
+{												// an array of decimal degs.
+	Array *darr;
+
+	if (crd == NULL)
+	{
+		error_message_ac(67, ERRMSS04);
+
+		return NULL;
+	}
+
+	darr = create_array(2);
+
+	insert_in_array( hour_to_decdeg(crd->a), darr, X );		// Conversion and insertion
+
+	insert_in_array( decimal_deg(crd->b), darr, Y );
+
+	return darr;
+}
+
+void over_eq_coord_to_decdeg_array(Coord *crd, Array *darr)		// Does the same as 'eq_coord_to_decdeg_array' but
+{																// saves the result in a pre-existing Array.
+	if (crd == NULL)
+	{
+		error_message_ac(68, ERRMSS04);
+
+		return;
+	}
+	else if (darr == NULL)
+	{
+		error_message_ac(68, ERRMSS08);
+
+		return;
+	}
+	else if ( length_of_array(darr) < 2 )
+	{
+		error_message_ac(68, ERRMSS09);
+
+		return;
+	}
+
+	insert_in_array( hour_to_decdeg(crd->a), darr, X );		// Conversion and insertion
+
+	insert_in_array( decimal_deg(crd->b), darr, Y );
+}
+
+Coord* decdeg_arr_to_eq_coord(Array *darr)		// Converts an array of decimal degs into a Coord structure of sexagesimal
+{												// equatorial coordinates.
+	Coord *crd;
+
+	if (darr == NULL)
+	{
+		error_message_ac(69, ERRMSS08);
+
+		return NULL;
+	}
+	else if ( length_of_array(darr) < 2 )
+	{
+		error_message_ac(69, ERRMSS09);
+
+		return NULL;
+	}
+
+	crd = create_coord();
+
+	crd->a = decdeg_to_hour( get_from_array(darr, X) );			// Conversion and insertion
+
+	crd->b = sexagesimal_deg( get_from_array(darr, Y) );
+
+	return crd;
+}
+
+void over_decdeg_arr_to_eq_coord(Array *darr, Coord *crd)		// Does the same as 'decdeg_arr_to_eq_coord' but saves
+{																// the result in a pre-existing Coord.
+	if (darr == NULL)
+	{
+		error_message_ac(70, ERRMSS08);
+
+		return;
+	}
+	else if (crd == NULL)
+	{
+		error_message_ac(70, ERRMSS04);
+
+		return;
+	}
+	else if ( length_of_array(darr) < 2 )
+	{
+		error_message_ac(70, ERRMSS09);
+
+		return;
+	}
+
+	crd->a = decdeg_to_hour( get_from_array(darr, X) );			// Conversion and insertion
+
+	crd->b = sexagesimal_deg( get_from_array(darr, Y) );
+}
+
 Array* decdeg_arr_to_rad_arr(Array *arr)		// Converts an array of decimal degs into an array of radians.
 {
 	Array *rarr;
@@ -2233,28 +2331,361 @@ void over_pos_vector_to_decdeg_arr(Array *pos, Array *darr)		// Does the same as
 	free_array(rad);
 }
 
-
-
-
-
-
-
-
-
-
-
-long aux(Date *date)	// Auxiliar test function.
+Array* precession_auxiliar_angles(double time)	// Calculates auxiliar angles used for precession.
 {
-	int x;
+	Array *ang, *coef;
 
-	x = date->y % 4;
+	ang = create_array(3);							// Array of angles
+
+	coef = create_array(4);							// Coefficients for the polynomial
+
+	insert_in_array(0, coef, 0);
+
+	insert_in_array(2306.2181, coef, 1);				// Algorithm and values found in H. Karttunen et al. (2017).
+
+	insert_in_array(0.30188, coef, 2);
+
+	insert_in_array(0.017998, coef, 3);
+
+	insert_in_array( polynomial_function(time, coef), ang, 0 );	// Calculates the first angle and repeats the process
+																// for the other two.
+	insert_in_array(1.09468, coef, 2);
+
+	insert_in_array(0.018203, coef, 3);
+
+	insert_in_array( polynomial_function(time, coef), ang, 1 );
+
+	insert_in_array(2004.3109, coef, 1);
+
+	insert_in_array(-0.42665, coef, 2);
+
+	insert_in_array(-0.041833, coef, 3);
+
+	insert_in_array( polynomial_function(time, coef), ang, 2 );
+
+	free_array(coef);
+
+	insert_in_array( decdeg_to_radian( ang->a[0] / 3600 ), ang, 0 );	// Converts into radians.
+
+	insert_in_array( decdeg_to_radian( ang->a[1] / 3600 ), ang, 1 );
+
+	insert_in_array( decdeg_to_radian( ang->a[2] / 3600 ), ang, 2 );
+
+	return ang;
+}
+
+Matrix* precession_matrix(Array *ang)		// Determines the matrix used for precession.
+{
+	double si[3], co[3], tmp;
+
+	Matrix *pmat;
+
+	if (ang == NULL)
+	{
+		error_message_ac(65, ERRMSS08);
+
+		return NULL;
+	}
+	else if ( length_of_array(ang) < 3 )
+	{
+		error_message_ac(65, ERRMSS09);
+
+		return NULL;
+	}
+
+	si[X] = sin( get_from_array(ang, X) );
+
+	si[Y] = sin( get_from_array(ang, Y) );
+
+	si[Z] = sin( get_from_array(ang, Z) );
+
+	co[X] = cos( get_from_array(ang, X) );
+
+	co[Y] = cos( get_from_array(ang, Y) );
+
+	co[Z] = cos( get_from_array(ang, Z) );
+
+	pmat = create_matrix(3, 3);
+
+	tmp = co[X] * co[Y] * co[Z] - si[X] * si[Y];	// Calculates the matrix elements one by one.
+
+	insert_in_matrix(tmp, pmat, 0, 0);
+
+	tmp = - si[X] * co[Y] * co[Z] - si[Y] * co[X];		// Algorithm found in H. Karttunen et al. (2017).
+
+	insert_in_matrix(tmp, pmat, 0, 1);
+
+	tmp = - si[Z] * co[Y];
+
+	insert_in_matrix(tmp, pmat, 0, 2);
+
+	tmp = si[Y] * co[X] * co[Z] + si[X] * co[Y];
+
+	insert_in_matrix(tmp, pmat, 1, 0);
+
+	tmp = - si[X] * si[Y] * co[Z] + co[X] * co[Y];
+
+	insert_in_matrix(tmp, pmat, 1, 1);
+
+	tmp = - si[Y] * si[Z];
+
+	insert_in_matrix(tmp, pmat, 1, 2);
+
+	tmp = si[Z] * co[X];
+
+	insert_in_matrix(tmp, pmat, 2, 0);
+
+	tmp = - si[X] * si[Z];
+
+	insert_in_matrix(tmp, pmat, 2, 1);
+
+	tmp = co[Z];
+
+	insert_in_matrix(tmp, pmat, 2, 2);
+
+	return pmat;
+}
+
+Array* precession_J2000(Array *darr, double jd)		// Precess the coordinates of an object with standard epoch J2000.0.
+{
+	double tcent;
+
+	Array *aux, *pos;
+	Matrix *trns;
+
+	if (darr == NULL)
+	{
+		error_message_ac(66, ERRMSS08);
+
+		return NULL;
+	}
+	else if ( length_of_array(darr) < 2 )
+	{
+		error_message_ac(66, ERRMSS09);
+
+		return NULL;
+	}
+	else if (jd <= 0)
+	{
+		error_message_ac(66, "invalid Julian Date informed!");
+
+		return NULL;
+	}
+
+	pos = position_vector(darr);				// Determines the corresponding position vector.
+
+	tcent = (jd - 2451545.0) / 36525.0;			// Fraction of century elapsed since 1/1/2000 12:00 UTC
+
+	aux = precession_auxiliar_angles(tcent);	// Angles used to calculate the precession matrix
+
+	trns = precession_matrix(aux);				// Precession matrix
+
+	free_array(aux);
+
+	aux = matrix_times_array(trns, pos);		// Multiplies the precession matrix by the position vector.
+
+	free_array(pos);
+
+	free_matrix(trns);
+
+	pos = pos_vector_to_decdeg_arr(aux);		// Calculates the new coordinates.
+
+	free_array(aux);
+
+	return pos;
+}
+
+Matrix* nutation_matrix(double jd)		// Determines the matrix used for nutation.
+{
+	double c1, c2, eps, deps, dpsi, t;
+
+	Array *coef;
+	Matrix *nut;
 	
-	return x;
+	if (jd <= 0)
+	{
+		error_message_ac(71, "invalid Julian Date informed!");
+
+		return NULL;
+	}
+
+	t = jd - 2451545.0;						// Algorithm found in H. Karttunen et al. (2017).
+
+	coef = create_array(4);					// Coefficients for the polynomial
+
+	insert_in_array( (23 + 26 / 60 + 21.448 / 3600), coef, 0 );
+
+	insert_in_array( (-46.815 / 3600), coef, 1 );
+
+	insert_in_array( (-0.00059 / 3600), coef, 2 );
+
+	insert_in_array( (0.001813 / 3600), coef, 3 );
+
+	eps = polynomial_function( (t / 36525.0), coef );
+
+	free_array(coef);
+
+	c1 = 125 - 0.05295 * t;
+
+	c2 = 200.9 + 1.97129 * t;
+
+	c1 = decdeg_to_radian(c1);				// Converts to radian.
+
+	c2 = decdeg_to_radian(c2);
+
+	dpsi = -0.0048 * sin(c1) - 0.0004 * sin(c2);
+
+	deps = 0.0026 * cos(c1) + 0.0002 * cos(c2);
+
+	eps += deps;
+
+	eps = decdeg_to_radian(eps);			// Converts to radian.
+
+	deps = decdeg_to_radian(deps);
+
+	dpsi = decdeg_to_radian(dpsi);
+
+	nut = create_identity_matrix(3);		// Nutation matrix with the main diagonal filled
+
+	c1 = dpsi * cos(eps);
+
+	c2 = dpsi * sin(eps);
+
+	insert_in_matrix(-c1, nut, 0, 1 );		// Fills the other elements.
+
+	insert_in_matrix(-c2, nut, 0, 2 );
+
+	insert_in_matrix(c1, nut, 1, 0);
+
+	insert_in_matrix(-deps, nut, 1, 2);
+
+	insert_in_matrix(c2, nut, 2, 0);
+
+	insert_in_matrix(deps, nut, 2, 1);
+
+	return nut;
+}
+
+Array* nutation_J2000(Array *darr, double jd)	// Corrects the coordinates of an object with nutation
+{												// for standard epoch J2000.0.
+	Array *new, *pos;
+	Matrix *nut;
+
+	if (darr == NULL)
+	{
+		error_message_ac(72, ERRMSS08);
+
+		return NULL;
+	}
+	else if ( length_of_array(darr) < 2 )
+	{
+		error_message_ac(72, ERRMSS09);
+
+		return NULL;
+	}
+	else if (jd <= 0)
+	{
+		error_message_ac(72, "invalid Julian Date informed!");
+
+		return NULL;
+	}
+
+	pos = position_vector(darr);			// Determines the corresponding position vector.
+
+	nut = nutation_matrix(jd);				// Calculates the nutation matrix.
+
+	new = matrix_times_array(nut, pos);		// New position vector
+
+	free_array(pos);
+
+	free_matrix(nut);
+
+	pos = pos_vector_to_decdeg_arr(new);	// Calculates the new coordinates.
+
+	return pos;
+}
+
+void aberration_correction(Array *darr, double jd)	// Corrects the coordinates of an object with annual aberration.
+{
+	double ar, dec, dar, ddec, g, lambda;
+
+	if (darr == NULL)
+	{
+		error_message_ac(73, ERRMSS08);
+
+		return;
+	}
+	else if ( length_of_array(darr) < 2 )
+	{
+		error_message_ac(73, ERRMSS09);
+
+		return;
+	}
+	else if (jd <= 0)
+	{
+		error_message_ac(73, "invalid Julian Date informed!");
+
+		return;
+	}
+
+	g = 357.528 + 0.9856 * (jd - 2451545.0);			// Calculates the ecliptic longitude of the Sun.
+
+	g = decdeg_to_radian(g);							// Algorithm found in H. Karttunen et al. (2017).
+
+	lambda = 280.46 + 0.985647 * (jd - 2451545.0) + 1.915 * sin(g) + 0.02 * sin(2 * g);
+
+	lambda = decdeg_to_radian(lambda);
+
+	ar = decdeg_to_radian( get_from_array(darr, 0) );	// Calculates the aberration.
+
+	dec = decdeg_to_radian( get_from_array(darr, 1) );
+
+	dar = ( -20.5 * sin(ar) * sin(lambda) - 18.8 * cos(ar) * cos(lambda) ) / cos(dec);
+
+	ddec = 20.5 * cos(ar) * sin(dec) * sin(lambda) + 18.8 * sin(ar) * sin(dec) * cos(lambda) - 8.1 * cos(dec) * cos(lambda);
+
+	dar /= 3600;										// Turns the values into degrees.
+
+	ddec /= 3600;
+
+	ar = radian_to_decdeg(ar) + dar;					// Adds the aberration to the coordinates.
+
+	dec = radian_to_decdeg(dec) + ddec;
+
+	insert_in_array(ar, darr, 0);
+
+	insert_in_array(dec, darr, 1);
 }
 
 
 
 
+
+
+
+
+
+
+
+void auxf(Matrix *mat)	// Auxiliar test function.
+{
+//	printf("\n\nAuxiliar vector:");
+
+//	printf("\n\nPosition vector:");
+
+	printf("\n\nPrecession matrix:");
+
+//	print_array(arr);
+
+	print_matrix(mat);
+}
+
+
+
+
+// Bibliography:
+// 
+// 
 // H. Karttunen; P. Kröger et al: Fundamental Astronomy, 6th ed., Springer-Verlag 2017.
 //
-//S. O. Kepler; M. F. O. Saraiva: Astronomia & Astrofísica, 2th ed., Livraria da Física 2004.
+// S. O. Kepler; M. F. O. Saraiva: Astronomia & Astrofísica, 2th ed., Livraria da Física 2004.
