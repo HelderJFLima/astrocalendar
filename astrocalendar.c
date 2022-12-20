@@ -20,7 +20,7 @@
 #define ERRMSS07 "NULL coordinate informed!"
 #define ERRMSS08 "NULL array informed!"
 #define ERRMSS09 "the length of array is insufficient!"
-// Last function number: 73
+// Last function number: 74
 
 struct date
 {
@@ -1700,6 +1700,141 @@ int day_number(Date *date)				// Gives the day number of a given date.
 	return n;
 }
 
+Date* date_of_day_number(int day, long year)		// Gives the date of a given day number.
+{
+	int leapYear;
+
+	Date *date;
+
+	leapYear = is_leap_year(year);
+
+	if (day < 1 || (day > 365 && !leapYear) || day > 366)
+	{
+		error_message_ac(74, "inexistent day informed!");
+
+		return NULL;
+	}
+
+	date = create_date();
+
+	date->y = year;
+
+	if (day < 182)						// Before July
+	{
+		if (day < 91)						// Before April
+		{
+			if (day <= 31)						// January
+			{
+				date->m = 1;
+
+				date->d = day;
+			}
+			else if (day > 31 && day <= 59)		// February
+			{
+				date->m = 2;
+
+				date->d = day - 31;
+			}
+			else								// March
+			{
+				date->m = 3;
+
+				date->d = day - 59;
+			}
+		}
+		else
+		{
+			if (day > 90 && day <= 120)			// April
+			{
+				date->m = 4;
+
+				date->d = day - 90;
+			}
+			else if (day > 120 && day <= 151)	// May
+			{
+				date->m = 5;
+
+				date->d = day - 120;
+			}
+			else								// June
+			{
+				date->m = 6;
+
+				date->d = day - 151;
+			}
+		}
+	}
+	else
+	{
+		if (day < 274)						// Before October
+		{
+			if (day > 181 && day <= 212)		// July
+			{
+				date->m = 7;
+
+				date->d = day - 181;
+			}
+			else if (day > 212 && day <= 243)	// August
+			{
+				date->m = 8;
+
+				date->d = day - 212;
+			}
+			else								// September
+			{
+				date->m = 9;
+
+				date->d = day - 243;
+			}
+		}
+		else
+		{
+			if (day > 273 && day <= 304)		// October
+			{
+				date->m = 10;
+
+				date->d = day - 273;
+			}
+			else if (day > 304 && day <= 334)	// November
+			{
+				date->m = 11;
+
+				date->d = day - 304;
+			}
+			else								// December
+			{
+				date->m = 12;
+
+				date->d = day - 334;
+			}
+		}
+	}
+
+	if (leapYear && day >= 60)			// Corrects the date in leap years.
+	{
+		if (day == 60)
+		{
+			date->d = 29;
+
+			date->m = 2;
+		}
+		else
+			date->d--;
+
+		if (date->d == 0)					// Corrects a "null day" error.
+		{
+			date->m--;
+
+			if (month_has_31days(date->m))
+				date->d = 31;
+			else
+				date->d = 30;
+		}
+	}
+
+	return date;
+}
+
 int cycle28_day_of_week(int num, int epch)		// Gives the first day of week of a year in a 28-year solar cycle.
 {													// The 'epoch' is the first day of week of the first year of the cycle.
 	int day, p;
@@ -1748,7 +1883,7 @@ int gregorian_cycle28_epoch(int year)	// Gives the first day of week of the 28-y
 	return epch;
 }
 
-int gregorian_first_day_of_year(int year)	// Gives the first day of week of a year in Gregorian Calendar.
+int gregorian_first_day_of_year(long year)	// Gives the first day of week of a year in Gregorian Calendar.
 {
 	int day, epch, hndr, num;
 
@@ -1838,7 +1973,7 @@ int gregorian_day_of_week(Date *date)	// Gives the day of week of a given date i
 	return day;
 }
 
-Date* catholic_easter_date(int year)	// Calculates the Catholic Easter date for a given year.
+Date* catholic_easter_date(long year)	// Calculates the Catholic Easter date for a given year.
 {
 	int a, b, c, d;
 
@@ -2333,6 +2468,8 @@ void over_pos_vector_to_decdeg_arr(Array *pos, Array *darr)		// Does the same as
 
 Array* precession_auxiliar_angles(double time)	// Calculates auxiliar angles used for precession.
 {
+	double a, b, c;
+
 	Array *ang, *coef;
 
 	ang = create_array(3);							// Array of angles
@@ -2365,11 +2502,17 @@ Array* precession_auxiliar_angles(double time)	// Calculates auxiliar angles use
 
 	free_array(coef);
 
-	insert_in_array( decdeg_to_radian( ang->a[0] / 3600 ), ang, 0 );	// Converts into radians.
+	a = decdeg_to_radian( get_from_array(ang, 0) / 3600 );		// Converts from seconds to degrees and then into radians.
 
-	insert_in_array( decdeg_to_radian( ang->a[1] / 3600 ), ang, 1 );
+	b = decdeg_to_radian( get_from_array(ang, 1) / 3600 );
 
-	insert_in_array( decdeg_to_radian( ang->a[2] / 3600 ), ang, 2 );
+	c = decdeg_to_radian( get_from_array(ang, 2) / 3600 );
+
+	insert_in_array(a, ang, 0);
+
+	insert_in_array(b, ang, 1);
+
+	insert_in_array(c, ang, 2);
 
 	return ang;
 }

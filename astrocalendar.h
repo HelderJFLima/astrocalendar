@@ -390,6 +390,11 @@ void correct_deg(Hdeg *deg);
 //
 int day_number(Date *date);
 
+// Gives the date of a given day number.
+// Returns NULL if the day informed does not exist.
+//
+Date* date_of_day_number(int day, long year);
+
 // Gives the first day of week of a year in a 28-year solar cycle.
 // Returns 0, 1, 2, ..., 6 for Sunday, Monday etc.
 // Returns a negative number if the day informed is not in the cycle.
@@ -405,7 +410,7 @@ int gregorian_cycle28_epoch(int year);
 // Gives the first day of week of a year in Gregorian Calendar.
 // Returns 0, 1, 2, ..., 6 for Sunday, Monday etc.
 //
-int gregorian_first_day_of_year(int year);
+int gregorian_first_day_of_year(long year);
 
 // Gives the day of week of a given date in Gregorian Calendar.
 // Returns 0, 1, 2, ..., 6 for Sunday, Monday etc.
@@ -416,7 +421,7 @@ int gregorian_day_of_week(Date *date);
 // Calculates the Catholic Easter date for a given year.
 // The year must be greater than or equal to 1.
 //
-Date* catholic_easter_date(int year);
+Date* catholic_easter_date(long year);
 
 // Gives the Julian Date.
 // Returns '0' if the time or the date are null
